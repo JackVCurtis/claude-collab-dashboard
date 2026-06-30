@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: claude_agents_dashboard_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: claude_agents_dashboard
+    ports:
+      # Host 5433 to avoid clashing with a local Homebrew Postgres on 5432
+      - '5433:5432'
+    volumes:
+      # postgres:18 expects the volume at /var/lib/postgresql (not .../data)
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d claude_agents_dashboard']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

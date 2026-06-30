@@ -1,0 +1,162 @@
+// Claude Agents Team Dashboard — Prisma schema
+// Read-only, opt-in coordination board fed by agents via the MCP endpoint.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// A team is the unit of visibility: every user, label, and agent belongs to one.
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  users  User[]
+  labels Label[]
+  agents Agent[]
+}
+
+// A developer who logs into the dashboard and whose agents report in.
+model User {
+  id           String   @id @default(cuid())
+  teamId       String
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  team         Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  agents       Agent[]
+  accessTokens AccessToken[]
+  authCodes    OAuthAuthCode[]
+
+  @@index([teamId])
+}
+
+// Team-agreed labels used to organize work (e.g. "frontend", "release", "spike").
+model Label {
+  id        String   @id @default(cuid())
+  teamId    String
+  key       String
+  name      String
+  color     String   @default("#6b7280")
+  createdAt DateTime @default(now())
+
+  team   Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  agents AgentLabel[]
+
+  @@unique([teamId, key])
+}
+
+enum AgentStatus {
+  idle
+  working
+  waiting_input
+  error
+  done
+  offline
+}
+
+// The current reported state of one agent session on a developer's machine.
+// Upserted on (userId, sessionId); a developer may run several agents at once.
+model Agent {
+  id           String      @id @default(cuid())
+  userId       String
+  teamId       String
+  sessionId    String
+  name         String?
+  hostname     String?
+  project      String?
+  status       AgentStatus @default(idle)
+  task         String?
+  startedAt    DateTime    @default(now())
+  lastReportAt DateTime    @default(now())
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team   Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  labels AgentLabel[]
+  events StatusEvent[]
+
+  @@unique([userId, sessionId])
+  @@index([teamId])
+}
+
+// Many-to-many between an agent and the team's labels.
+model AgentLabel {
+  agentId String
+  labelId String
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([agentId, labelId])
+}
+
+// Append-only history of an agent's reports, for a timeline view.
+model StatusEvent {
+  id        String      @id @default(cuid())
+  agentId   String
+  status    AgentStatus
+  task      String?
+  createdAt DateTime    @default(now())
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+}
+
+// OAuth 2.1 client registered (dynamically) by a developer's Claude CLI.
+model OAuthClient {
+  id               String   @id @default(cuid())
+  clientId         String   @unique
+  clientSecretHash String?
+  name             String
+  redirectUris     String[]
+  createdAt        DateTime @default(now())
+
+  authCodes    OAuthAuthCode[]
+  accessTokens AccessToken[]
+}
+
+// Short-lived authorization code (PKCE) issued at /oauth/authorize.
+model OAuthAuthCode {
+  id                  String    @id @default(cuid())
+  code                String    @unique
+  clientId            String
+  userId              String
+  redirectUri         String
+  codeChallenge       String
+  codeChallengeMethod String    @default("S256")
+  scope               String?
+  expiresAt           DateTime
+  usedAt              DateTime?
+  createdAt           DateTime  @default(now())
+
+  client OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Opaque bearer token (stored hashed) presented by an agent on the MCP endpoint.
+model AccessToken {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  clientId   String
+  userId     String
+  scope      String?
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  client OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
