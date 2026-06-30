@@ -1,0 +1,48 @@
+# fly.toml — Claude Agents Dashboard
+# Update `app`, `primary_region`, and the APP_URL below to match your deployment,
+# then set secrets:  fly secrets set APP_KEY=... DATABASE_URL='postgres://...?sslmode=require'
+
+app = "claude-collab-dashboard"
+primary_region = "sjc"
+
+[build]
+  # AdonisJS + Prisma deploys most reliably from a Dockerfile
+  # (build with `node ace build`, generate the Prisma client, run from build/).
+  # Run `fly launch` to scaffold one, or ask and I'll generate it.
+  dockerfile = "Dockerfile"
+
+[deploy]
+  # Apply Prisma migrations on each release (we use Prisma, not Lucid migrations).
+  release_command = "npx prisma migrate deploy"
+
+[env]
+  NODE_ENV = "production"
+  HOST = "0.0.0.0"          # required: dev default is localhost, which Fly can't reach
+  PORT = "3333"             # must equal http_service.internal_port below
+  LOG_LEVEL = "info"
+  SESSION_DRIVER = "cookie"
+  # APP_URL drives the OAuth issuer/endpoints and the MCP resource-metadata URLs,
+  # so it MUST be the exact public HTTPS origin (no trailing slash). Update it if
+  # you rename the app or use a custom domain.
+  APP_URL = "https://claude-collab-dashboard.fly.dev"
+  # Secrets (set via `fly secrets set`, NOT here): APP_KEY, DATABASE_URL
+
+[http_service]
+  internal_port = 3333       # matches PORT
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # Keep one machine warm so live SSE board connections and MCP sessions aren't
+  # dropped by scale-to-zero. Set to 0 to save cost if cold starts are acceptable.
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/login"          # returns 200 for guests; "/" 302-redirects, so don't probe it
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
