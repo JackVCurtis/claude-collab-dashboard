@@ -1,0 +1,26 @@
+# Rebuilt or regenerated inside the image
+node_modules
+build
+.adonisjs
+tmp
+
+# Local env / secrets — provided by Fly at runtime, never bake into the image
+.env
+.env.*
+
+# VCS, tooling, and docs not needed in the image
+.git
+.gitignore
+.github
+*.log
+.DS_Store
+coverage
+tests
+
+# Deploy/compose configs (not needed inside the app image)
+Dockerfile
+.dockerignore
+docker-compose.yml
+fly.toml
+README.md
+docs

@@ -8,7 +8,7 @@ export const controllers = {
   Connect: () => import('#controllers/connect_controller'),
   Labels: () => import('#controllers/labels_controller'),
   Mcp: () => import('#controllers/mcp_controller'),
+  NewAccount: () => import('#controllers/new_account_controller'),
   Oauth: () => import('#controllers/oauth_controller'),
   Session: () => import('#controllers/session_controller'),
-  NewAccount: () => import('#controllers/new_account_controller'),
 }
