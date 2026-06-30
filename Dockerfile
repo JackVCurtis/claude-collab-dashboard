@@ -16,14 +16,6 @@ WORKDIR /app
 
 # ---- deps: full install (incl. dev) + generate the Prisma client ----
 FROM base AS deps
-# Placeholder env so `node ace build`'s env validation passes at build time.
-# These are NOT used at runtime — Fly injects the real values (and secrets).
-ENV APP_KEY=build_time_placeholder_key_not_used_at_runtime \
-    APP_URL=http://localhost:3333 \
-    HOST=0.0.0.0 \
-    PORT=3333 \
-    LOG_LEVEL=info \
-    SESSION_DRIVER=cookie
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev
 COPY prisma ./prisma
@@ -32,7 +24,12 @@ RUN npx prisma generate
 # ---- build: compile TS + Vite, then assemble a pruned production tree ----
 FROM deps AS build
 COPY . .
-RUN node ace build
+# Placeholder env lets `node ace build` pass env validation; the real values
+# come from Fly at runtime. Set inline so nothing is baked into an image layer.
+RUN APP_KEY=build_placeholder_not_used_at_runtime \
+    APP_URL=http://localhost:3333 \
+    HOST=0.0.0.0 PORT=3333 LOG_LEVEL=info SESSION_DRIVER=cookie \
+    node ace build
 # Production-only dependencies for the compiled app, plus the Prisma CLI
 # (a devDependency) so the Fly release_command can run migrations.
 RUN cd build \

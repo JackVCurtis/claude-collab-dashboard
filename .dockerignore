@@ -1,21 +1,25 @@
 # Rebuilt or regenerated inside the image
 node_modules
 build
-.adonisjs
 tmp
+
+# NOTE: .adonisjs/ (Tuyau/Inertia codegen) is intentionally NOT ignored — Vite
+# needs .adonisjs/client/registry during `node ace build`, and Tuyau only
+# regenerates it on a web-env boot. Regenerate it (run/boot the app) before
+# building the image if you change routes or Inertia pages.
 
 # Local env / secrets — provided by Fly at runtime, never bake into the image
 .env
 .env.*
 
 # VCS, tooling, and docs not needed in the image
+# (tests/ is kept: bin/test.ts imports tests/bootstrap and is compiled by the build)
 .git
 .gitignore
 .github
 *.log
 .DS_Store
 coverage
-tests
 
 # Deploy/compose configs (not needed inside the app image)
 Dockerfile
