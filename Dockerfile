@@ -30,15 +30,15 @@ RUN APP_KEY=build_placeholder_not_used_at_runtime \
     APP_URL=http://localhost:3333 \
     HOST=0.0.0.0 PORT=3333 LOG_LEVEL=info SESSION_DRIVER=cookie \
     node ace build
-# Production-only dependencies for the compiled app, plus the Prisma CLI
-# (a devDependency) so the Fly release_command can run migrations.
+# Production-only dependencies for the compiled app + the Prisma CLI (a
+# devDependency) so the Fly release_command can run migrations. Copy the schema
+# in and generate the client DIRECTLY inside build/node_modules, so the runtime
+# gets a real client instead of @prisma/client's uninitialized postinstall stub.
 RUN cd build \
  && npm ci --omit=dev \
- && npm install --no-save prisma@6
-# Carry the generated client and the schema/migrations into the build output.
-RUN cp -R node_modules/.prisma build/node_modules/.prisma \
- && cp -R prisma build/prisma
-RUN npx prisma generate
+ && npm install --no-save prisma@6 \
+ && cp -R ../prisma ./prisma \
+ && npx prisma generate
 
 # ---- runtime: minimal image that runs the compiled app as a non-root user ----
 FROM base AS runtime
