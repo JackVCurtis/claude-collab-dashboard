@@ -38,6 +38,7 @@ RUN cd build \
 # Carry the generated client and the schema/migrations into the build output.
 RUN cp -R node_modules/.prisma build/node_modules/.prisma \
  && cp -R prisma build/prisma
+RUN npx prisma generate
 
 # ---- runtime: minimal image that runs the compiled app as a non-root user ----
 FROM base AS runtime
